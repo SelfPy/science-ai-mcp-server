@@ -9,7 +9,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerArticleWriter } from "./article-writer.js";
 import { registerDuplicatePublication } from "./duplicate-publication.js";
-import { registerHakemReview } from "./hakem-review.js";
+import { registerAiReview } from "./ai-review.js";
 import { registerJournalRecommender } from "./journal-recommender.js";
 import { registerPreCheck } from "./pre-check.js";
 import { registerResearchGaps } from "./research-gaps.js";
@@ -17,7 +17,7 @@ import { registerResearchGaps } from "./research-gaps.js";
 export function registerAllTools(server: McpServer): void {
   registerArticleWriter(server); // exposes start_ + get_writer_pipeline_status
   registerDuplicatePublication(server);
-  registerHakemReview(server);
+  registerAiReview(server);
   registerJournalRecommender(server);
   registerPreCheck(server);
   registerResearchGaps(server);

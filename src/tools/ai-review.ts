@@ -1,7 +1,7 @@
 /**
- * hakem_review_paper — POST /api/review/claude
+ * ai_review_paper — POST /api/review/claude
  *
- * Single HAKEM-agent peer-review call. Text-only for MVP (vision /
+ * Single AI-reviewer-agent peer-review call. Text-only for MVP (vision /
  * figure-image review deferred). The MCP boundary doesn't stream — we
  * return the final normalised review JSON in one chunk.
  */
@@ -24,12 +24,12 @@ const inputShape = {
     .enum(["methodology", "language", "figures", "plagiarism", "literature"])
     .optional()
     .describe(
-      "Which HAKEM specialist agent to run. Drives the calibration RAG corpus " +
+      "Which specialist reviewer agent to run. Drives the calibration RAG corpus " +
         "and the system prompt; defaults to a generic reviewer when omitted.",
     ),
 };
 
-interface HakemResponse {
+interface AiReviewResponse {
   score?: number;
   verdict?: string;
   summary?: string;
@@ -43,13 +43,13 @@ interface HakemResponse {
   [k: string]: unknown;
 }
 
-export function registerHakemReview(server: McpServer): void {
+export function registerAiReview(server: McpServer): void {
   server.registerTool(
-    "hakem_review_paper",
+    "ai_review_paper",
     {
-      title: "HAKEM Single-Agent Review",
+      title: "AI Multi-Agent Peer Review (single agent)",
       description:
-        "Run one of the HAKEM specialist agents (methodology, language, figures, " +
+        "Run one of the specialist reviewer agents (methodology, language, figures, " +
         "plagiarism, or literature) on a prepared agent prompt and return the " +
         "structured editorial decision: score (1-10), verdict (Accept / Minor " +
         "Revision / Major Revision / Reject), summary, strengths, concerns, " +
@@ -59,7 +59,7 @@ export function registerHakemReview(server: McpServer): void {
       inputSchema: inputShape,
     },
     async (args) => {
-      const result = await request<HakemResponse>({
+      const result = await request<AiReviewResponse>({
         method: "POST",
         path: "/api/review/claude",
         body: { prompt: args.prompt, agentType: args.agentType },
@@ -68,7 +68,7 @@ export function registerHakemReview(server: McpServer): void {
       });
 
       const lines: string[] = [];
-      lines.push(`HAKEM review (${args.agentType ?? "generic"})`);
+      lines.push(`AI peer review (${args.agentType ?? "generic"})`);
       lines.push(
         `  Score: ${result.score ?? "?"}/10   Verdict: ${result.verdict ?? "?"}   Confidence: ${result.confidence ?? "?"}`,
       );

@@ -40,7 +40,7 @@ The same config works in **Cursor** (`~/.cursor/mcp.json`), **Cline** (via the V
 | `check_duplicate_publication` | Cross-reference against CrossRef + arXiv + medRxiv + bioRxiv + Unpaywall + a 900k-paper library | Free |
 | `recommend_journals` | Ranked target journals from a 1,214-venue index, with predatory-journal flags | Free |
 | `find_research_gaps` | Synthesised gaps + most-cited + most-recent papers around your query | Credits |
-| `hakem_review_paper` | Single-agent HAKEM peer-review pass on a prepared prompt | Credits |
+| `ai_review_paper` | Single-agent AI peer-review pass on a prepared prompt | Credits |
 | `start_writer_pipeline` / `get_writer_pipeline_status` | Drive the Article Writer pipeline from outside the wizard | Credits |
 
 ## Configuration

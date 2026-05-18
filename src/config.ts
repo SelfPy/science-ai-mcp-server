@@ -45,7 +45,7 @@ export function getConfig(): ServerConfig {
 
   const requestTimeoutMs = (() => {
     const raw = process.env.SCIENCE_AI_REQUEST_TIMEOUT_MS;
-    if (!raw) return 120_000; // 2 min — covers HAKEM agent calls
+    if (!raw) return 120_000; // 2 min — covers slow AI peer-review agent calls
     const n = Number(raw);
     return Number.isFinite(n) && n > 0 ? Math.min(n, 600_000) : 120_000;
   })();
