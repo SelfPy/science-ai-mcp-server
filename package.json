@@ -1,0 +1,62 @@
+{
+  "name": "science-ai-mcp-server",
+  "version": "0.1.3",
+  "description": "MCP (Model Context Protocol) server for Science AI Journal tools — Pre-Check, AI Review, Research Gaps, Journal Recommender, Duplicate Publication Checker, Article Writer. Use them inside Claude Desktop, Cursor, Cline, or any MCP-enabled client.",
+  "mcpName": "io.github.SelfPy/science-ai-mcp-server",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-desktop",
+    "cursor",
+    "cline",
+    "academic",
+    "peer-review",
+    "research",
+    "research-gaps",
+    "journal-recommender",
+    "scholarly-publishing",
+    "writer",
+    "pubmed",
+    "citation",
+    "science-ai-journal"
+  ],
+  "homepage": "https://scienceaijournal.com/developers/mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SelfPy/science-ai-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SelfPy/science-ai-mcp-server/issues"
+  },
+  "license": "MIT",
+  "author": "Science AI Journal <support@scienceaijournal.com>",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "science-ai-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "// Note on prepublishOnly": "Only rebuilds if dist/ is missing. Lets users publish from the already-built npm tarball without needing tsc installed globally — the 0.1.0 publish needed --ignore-scripts because of the unconditional build.",
+    "prepublishOnly": "test -d dist || npm run build",
+    "start": "node dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.4.0"
+  }
+}
