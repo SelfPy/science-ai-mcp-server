@@ -1,20 +1,24 @@
 {
   "name": "science-ai-mcp-server",
-  "version": "0.1.3",
-  "description": "MCP (Model Context Protocol) server for Science AI Journal tools — Pre-Check, AI Review, Research Gaps, Journal Recommender, Duplicate Publication Checker, Article Writer. Use them inside Claude Desktop, Cursor, Cline, or any MCP-enabled client.",
+  "version": "0.1.4",
+  "description": "MCP (Model Context Protocol) server for Science AI Journal research tools — AI Review agents, the research-gap literature search and a duplicate-publication check, plus Pre-Check and the Journal Finder once the server opens them to API keys — inside Claude Desktop, Claude Code, Cursor, Cline, or any MCP-enabled client.",
   "mcpName": "io.github.SelfPy/science-ai-mcp-server",
   "keywords": [
     "mcp",
     "model-context-protocol",
     "claude",
     "claude-desktop",
+    "claude-code",
     "cursor",
     "cline",
     "academic",
     "peer-review",
     "research",
     "research-gaps",
+    "literature-search",
+    "journal-finder",
     "journal-recommender",
+    "duplicate-publication",
     "scholarly-publishing",
     "writer",
     "pubmed",
@@ -39,13 +43,16 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "server.json"
   ],
   "scripts": {
-    "build": "tsc",
-    "// Note on prepublishOnly": "Only rebuilds if dist/ is missing. Lets users publish from the already-built npm tarball without needing tsc installed globally — the 0.1.0 publish needed --ignore-scripts because of the unconditional build.",
-    "prepublishOnly": "test -d dist || npm run build",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc",
+    "test": "npm run build && node --test",
+    "// Note on prepublishOnly": "Always a clean build plus the test suite (cross-platform, Node only). Until 0.1.4 this skipped the build when dist/ existed, which would have published a months-old dist/ under a new version number.",
+    "prepublishOnly": "npm test",
     "start": "node dist/index.js"
   },
   "engines": {

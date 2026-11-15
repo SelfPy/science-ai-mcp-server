@@ -1,0 +1,13 @@
+# Smithery listing (https://smithery.ai): local stdio server started with npx.
+# Not part of the npm tarball (package.json "files"); it lives in the repository root of the public mirror.
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: [scienceAiApiKey]
+    properties:
+      scienceAiApiKey:
+        type: string
+        description: API key from https://scienceaijournal.com/settings?section=api-keys (starts with saij_)
+  commandFunction: |-
+    (config) => ({ command: "npx", args: ["-y", "science-ai-mcp-server"], env: { SCIENCE_AI_API_KEY: config.scienceAiApiKey } })

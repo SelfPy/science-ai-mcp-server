@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.SelfPy/science-ai-mcp-server",
   "title": "Science AI Journal MCP Server",
-  "description": "Academic peer-review, research-gap finding, journal recommender, and article writer tools.",
-  "version": "0.1.3",
+  "description": "AI Review agents, a literature search and duplicate-publication checks for papers.",
+  "version": "0.1.4",
   "websiteUrl": "https://scienceaijournal.com/developers/mcp",
   "repository": {
     "url": "https://github.com/SelfPy/science-ai-mcp-server",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "science-ai-mcp-server",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "transport": {
         "type": "stdio"
       },
