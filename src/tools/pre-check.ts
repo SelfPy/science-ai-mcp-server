@@ -1,26 +1,43 @@
 /**
  * pre_check_paper — POST /api/scorer
  *
- * Tier 1-5 acceptance probability from title + abstract. Local FTS5
- * BM25 against the 33k-paper library + tier-density aggregation. Zero
- * LLM cost, sub-second response.
+ * Tier 1, 2 and 3 acceptance probabilities from title + abstract. Local FTS5
+ * BM25 against the 7.9M-paper library + tier-density aggregation. No LLM call.
  *
- * The route is anonymous on the server side, but we still attach the
- * Bearer token so the activity log can attribute the call to the
- * user's account (and so future per-account rate limits work).
+ * REACHABLE WITH AN API KEY ONLY ONCE THE SERVER OPENS IT. /api/scorer joins
+ * the app middleware's MCP_ELIGIBLE_PATHS in the server release that follows
+ * the publication of 0.1.4 (journal/src/lib/mcp-package.ts
+ * MCP_TOOL_READY_SINCE; tools-truth-0927.test.ts enforces the order). Before
+ * that the edge answers every Bearer call with a 401 and nothing is charged,
+ * and http.ts says so instead of blaming the key. The order exists because up
+ * to 0.1.3 this tool read tier1-3 as numbers while the route returns "35%"
+ * strings, and 0.1.3's description called the tool free; after the server
+ * opens the endpoint it refuses those older packages with a 426 (no charge).
+ *
+ * METERED: the route charges SERVICE_COSTS.precheck
+ * (15 credits) per run to the API key's account —
+ * journal/src/app/api/scorer/route.ts → chargeToolOrReject(caller, "precheck").
+ * This package cannot import the app's journal/src/lib/credits-constants.ts,
+ * so the number is typed in the description below;
+ * journal/src/lib/__tests__/marketing-price-claims.test.ts fails if it drifts
+ * from that constant. The library size is libraryPapersLabel in
+ * journal/src/lib/seo/constants.ts. The answer is formatted by
+ * ../format/pre-check.ts.
  */
 
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getConfig } from "../config.js";
+import { formatScorerResult } from "../format/pre-check.js";
 import { request } from "../http.js";
 
 const inputShape = {
-  title: z.string().min(1).max(600).describe("Paper title (required)."),
+  title: z.string().min(1).max(600).describe("Paper title (required unless booleanQuery is supplied)."),
   abstract: z
     .string()
     .min(1)
     .max(20_000)
-    .describe("Paper abstract (required)."),
+    .describe("Paper abstract (required unless booleanQuery is supplied)."),
   keywords: z
     .string()
     .max(600)
@@ -39,16 +56,32 @@ const inputShape = {
     .describe(
       "Set to false to score against fullText. Default true. Ignored when fullText is absent.",
     ),
+  booleanQuery: z
+    .string()
+    .max(2000)
+    .optional()
+    .describe(
+      'Optional Elicit-style Boolean query (Phase 0 / P0a). Example: ' +
+        '`("persistent homology" OR "algebraic topology") AND topological`. ' +
+        'When supplied, bypasses bag-of-words token extraction and feeds ' +
+        'the lowered FTS5 string directly. Parse failures return HTTP 400 ' +
+        'with the character position of the error.',
+    ),
+  force: z
+    .boolean()
+    .optional()
+    .describe(
+      "Set to true to score a title + abstract this account already ran recently. Without it, " +
+        "a repeat returns a pointer to the saved result and is not charged.",
+    ),
+  acknowledgeLowEnglish: z
+    .boolean()
+    .optional()
+    .describe(
+      "The library is English-language: a text that does not look like English is refused with " +
+        "HTTP 422 and not charged. Set to true to run it anyway (charged as usual; expect a rough result).",
+    ),
 };
-
-interface ScorerResponse {
-  field?: string;
-  tier1?: number;
-  tier2?: number;
-  tier3?: number;
-  confidence?: number;
-  [k: string]: unknown;
-}
 
 export function registerPreCheck(server: McpServer): void {
   server.registerTool(
@@ -56,16 +89,25 @@ export function registerPreCheck(server: McpServer): void {
     {
       title: "Pre-Check Paper",
       description:
-        "Run a free, zero-LLM-cost pre-submission scoring of an academic paper. " +
-        "Returns predicted publication tier (Tier 1, 2, or 3 probability), the " +
-        "detected research field, and a confidence band. Backed by a local 33,000-paper " +
-        "library via FTS5 BM25. Use this when the user wants a fast sanity-check on " +
-        "whether a paper is ready to submit, or which tier of journal to target. " +
-        "Sub-second response. Free.",
+        "Pre-submission scoring of an academic paper from its title and abstract. " +
+        "Returns Tier 1, Tier 2 and Tier 3 acceptance probabilities, the detected " +
+        "research field, and how much evidence the estimate rests on (how many " +
+        "similar papers were retrieved, and whether the result is provisional), " +
+        "scored against a local 7.9M-paper library via FTS5 BM25 with no LLM call. " +
+        "Use this when the user wants a fast readiness check before submitting, or " +
+        "which tier of journal to target. Costs 15 Science AI Journal credits per " +
+        "call, charged to the API key's account; an account without enough credits " +
+        "gets HTTP 402 and is not charged, and a repeat of a recent run returns the " +
+        "saved result's link without charging. The probabilities are estimates from " +
+        "similar published papers, not a decision: present them as a rough guide. " +
+        "Calls are rate-limited per API key; a refused call (401, 402, 422, 429, 503) " +
+        "is not charged and the error says what to do. If the server answers that this " +
+        "tool is not available through MCP yet, nothing was charged: run Pre-Check in " +
+        "the web app at scienceaijournal.com/scorer instead.",
       inputSchema: inputShape,
     },
     async (args) => {
-      const result = await request<ScorerResponse>({
+      const result = await request<unknown>({
         method: "POST",
         path: "/api/scorer",
         body: {
@@ -74,37 +116,19 @@ export function registerPreCheck(server: McpServer): void {
           keywords: args.keywords,
           fullText: args.fullText,
           abstractOnly: args.abstractOnly,
+          booleanQuery: args.booleanQuery,
+          force: args.force,
+          acknowledgeLowEnglish: args.acknowledgeLowEnglish,
         },
       });
       return {
         content: [
           {
             type: "text",
-            text: formatScorerResult(result),
+            text: formatScorerResult(result, { baseUrl: getConfig().baseUrl }),
           },
         ],
       };
     },
-  );
-}
-
-function formatScorerResult(r: ScorerResponse): string {
-  const field = r.field ?? "(unknown)";
-  const pct = (v: unknown): string =>
-    typeof v === "number" ? `${Math.round(v * 100)}%` : "—";
-  const tier1 = pct(r.tier1);
-  const tier2 = pct(r.tier2);
-  const tier3 = pct(r.tier3);
-  const conf =
-    typeof r.confidence === "number"
-      ? `${Math.round(r.confidence * 100)}%`
-      : "—";
-  return (
-    `Pre-Check result\n` +
-    `  Detected field: ${field}\n` +
-    `  Tier 1 probability: ${tier1}\n` +
-    `  Tier 2 probability: ${tier2}\n` +
-    `  Tier 3 probability: ${tier3}\n` +
-    `  Confidence: ${conf}\n`
   );
 }

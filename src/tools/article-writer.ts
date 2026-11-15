@@ -10,6 +10,15 @@
  *
  * The MCP wrapper exposes status under a different name so callers can
  * tell start vs poll apart.
+ *
+ * ACCESS: the Article Writer is editor-gated (WRITER_EDITOR_EMAILS — see
+ * journal/src/lib/writer-gate.ts). The middleware answers 404 on every
+ * /api/writer/* path unless the request carries a SIGNED-IN BROWSER SESSION
+ * whose email is on the list — and an API key is not a session. So during the
+ * private beta every API-key call gets the 404, an editor's key included
+ * (verified 2026-09-27; until then both descriptions said the 404 was only
+ * for accounts without access). Both tools say so up front; http.ts turns the
+ * 404 into a readable message.
  */
 
 import { z } from "zod";
@@ -95,12 +104,14 @@ export function registerArticleWriter(server: McpServer): void {
     {
       title: "Start Article Writer Pipeline",
       description:
-        "Enqueue a writer-pipeline job for an existing WriterSession. " +
+        "Not available with an API key during the Article Writer's private beta: " +
+        "the server answers every API-key call to this tool with 404. Once the " +
+        "writer is public: enqueue a writer-pipeline job for an existing WriterSession. " +
         "Returns immediately with a jobId; the orchestrator-worker claims " +
         "it within ~5 seconds. Default section is step_7_5 — the auto-chain " +
         "that replaces the three buttons in Step 7.5. Use " +
         "`get_writer_pipeline_status` to poll until status is 'done', 'failed', " +
-        "or 'aborted'. Uses Science AI Journal credits.",
+        "or 'aborted'. Writer steps are billed in Science AI Journal credits.",
       inputSchema: startShape,
     },
     async (args) => {
@@ -147,7 +158,9 @@ export function registerArticleWriter(server: McpServer): void {
     {
       title: "Get Article Writer Pipeline Status",
       description:
-        "Return the latest writer-pipeline job for a (sessionId, section). " +
+        "Not available with an API key during the Article Writer's private beta " +
+        "(the server answers every API-key call with 404). Once the writer is " +
+        "public: return the latest writer-pipeline job for a (sessionId, section). " +
         "Use after `start_writer_pipeline` and poll every 5-10 seconds. " +
         "Terminal statuses: 'done', 'failed', 'aborted'.",
       inputSchema: statusShape,

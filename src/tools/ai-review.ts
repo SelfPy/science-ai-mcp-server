@@ -4,6 +4,20 @@
  * Single AI-reviewer-agent peer-review call. Text-only for MVP (vision /
  * figure-image review deferred). The MCP boundary doesn't stream — we
  * return the final normalised review JSON in one chunk.
+ *
+ * METERED per call: an API-key caller pays PER_CALL_COST (4 credits) per
+ * request — journal/src/app/api/review/claude/route.ts, "Per-call credit gate
+ * for Bearer (API-key) callers", ceil(SERVICE_COSTS.review / 8) so a full
+ * 8-agent pass lands near the web price. The number is typed below because
+ * this package cannot import the app; marketing-price-claims.test.ts pins it
+ * to the route's constant.
+ *
+ * agentType selects the calibration corpus (RAG examples), not a system
+ * prompt. The enum lists the live review engine's LLM agents
+ * (components/hakem/ScienceAI.tsx AGENTS); "plagiarism" and "language" are
+ * kept so 0.1.3 configs still validate, and "plagiarism" is sent as
+ * "originality" — the engine's name for that reviewer (training-rag.ts
+ * ROLE_TO_TYPE maps PLAGIARISM → originality).
  */
 
 import { z } from "zod";
@@ -21,13 +35,27 @@ const inputShape = {
         "if agentType is supplied, and runs the chosen Claude model.",
     ),
   agentType: z
-    .enum(["methodology", "language", "figures", "plagiarism", "literature"])
+    .enum([
+      "methodology",
+      "formulas",
+      "originality",
+      "literature",
+      "reproducibility",
+      "clarity",
+      "figures",
+      "language",
+      "plagiarism",
+    ])
     .optional()
     .describe(
-      "Which specialist reviewer agent to run. Drives the calibration RAG corpus " +
-        "and the system prompt; defaults to a generic reviewer when omitted.",
+      "Which specialist reviewer to run. Selects the calibration examples drawn " +
+        "from real peer reviews for that reviewer; defaults to a generic reviewer " +
+        'when omitted. "plagiarism" is an alias for "originality".',
     ),
 };
+
+/** Legacy 0.1.3 name → the review engine's agent name. */
+const AGENT_ALIASES: Record<string, string> = { plagiarism: "originality" };
 
 interface AiReviewResponse {
   score?: number;
@@ -49,20 +77,26 @@ export function registerAiReview(server: McpServer): void {
     {
       title: "AI Multi-Agent Peer Review (single agent)",
       description:
-        "Run one of the specialist reviewer agents (methodology, language, figures, " +
-        "plagiarism, or literature) on a prepared agent prompt and return the " +
-        "structured editorial decision: score (1-10), verdict (Accept / Minor " +
-        "Revision / Major Revision / Reject), summary, strengths, concerns, " +
-        "detailed multi-section review, confidence band, and questions for the " +
-        "authors. Uses Science AI Journal credits. For the full 5-agent + " +
-        "synthesis flow, prefer the web UI at scienceaijournal.com/ai-review.",
+        "Run one specialist reviewer agent (methodology, formulas, originality, " +
+        "literature, reproducibility, clarity or figures) on a prepared agent " +
+        "prompt and return the structured editorial decision: score (1-10), " +
+        "verdict (Accept / Minor Revision / Major Revision / Reject), summary, " +
+        "strengths, concerns, detailed multi-section review, confidence band, and " +
+        "questions for the authors. Costs 4 Science AI Journal credits per call " +
+        "(one call = one agent), charged to the API key's account; an account " +
+        "without enough credits gets HTTP 402 and is not charged. For a whole " +
+        "manuscript, AI Review in the web app at scienceaijournal.com/ai-review " +
+        "runs all 9 specialist agents plus a synthesis in one pass.",
       inputSchema: inputShape,
     },
     async (args) => {
+      const agentType = args.agentType
+        ? AGENT_ALIASES[args.agentType] ?? args.agentType
+        : undefined;
       const result = await request<AiReviewResponse>({
         method: "POST",
         path: "/api/review/claude",
-        body: { prompt: args.prompt, agentType: args.agentType },
+        body: { prompt: args.prompt, agentType },
         // 90s server-side max + 30s margin for slow upstream proxies.
         timeoutMs: 120_000,
       });
