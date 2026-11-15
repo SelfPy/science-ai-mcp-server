@@ -6,6 +6,8 @@
  * time from the client's config file; we don't watch for changes.
  */
 
+import { VERSION } from "./version.js";
+
 const DEFAULT_BASE_URL = "https://scienceaijournal.com";
 
 export interface ServerConfig {
@@ -53,7 +55,7 @@ export function getConfig(): ServerConfig {
   cached = {
     apiKey,
     baseUrl,
-    userAgent: `science-ai-mcp-server/0.1.0 (+${DEFAULT_BASE_URL}/developers/mcp)`,
+    userAgent: `science-ai-mcp-server/${VERSION} (+${DEFAULT_BASE_URL}/developers/mcp)`,
     requestTimeoutMs,
   };
   return cached;
